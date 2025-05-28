@@ -79,6 +79,12 @@ const handleSubmit = async (type) => {
       body: JSON.stringify({ prompt }),
     });
 
+    if (response.status === 403) {
+      alert("Image generation is currently disabled by the admin.");
+      setGeneratingImg(false);
+      return;
+    }
+
     const data = await response.json();
 
     if (!data.photo) {
