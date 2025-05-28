@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useSnapshot } from 'valtio';
 
@@ -23,6 +23,25 @@ const Customizer = () => {
     logoShirt: true,
     stylishShirt: false,
   })
+
+  const editorRef = useRef(null);
+
+  useEffect(() => {
+  const handleClickOutside = (event) => {
+    if (
+      editorRef.current &&
+      !editorRef.current.contains(event.target)
+    ) {
+      setActiveEditorTab("");
+    }
+  };
+
+  document.addEventListener("mousedown", handleClickOutside);
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, []);
+
 
   const generateTabContent = () => {
     switch (activeEditorTab) {
@@ -52,7 +71,7 @@ const handleSubmit = async (type) => {
   try {
     setGeneratingImg(true);
 
-    const response = await fetch('http://localhost:8080/api/v1/dalle', {
+    const response = await fetch('https://teeverse.onrender.com/api/v1/dalle', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -102,7 +121,7 @@ const handleSubmit = async (type) => {
         break;
     }
 
-    // after setting the state, activeFilterTab is updated
+
 
     setActiveFilterTab((prevState) => {
       return {
@@ -130,12 +149,12 @@ const handleSubmit = async (type) => {
             {...slideAnimation('left')}
           >
             <div className="flex items-center min-h-screen">
-              <div className="editortabs-container tabs">
+              <div ref={editorRef} className="editortabs-container tabs">
                 {EditorTabs.map((tab) => (
                   <Tab 
                     key={tab.name}
                     tab={tab}
-                    handleClick={() => setActiveEditorTab(tab.name)}
+                    handleClick={() => setActiveEditorTab((prevTab) => prevTab === tab.name ? "" : tab.name)}
                   />
                 ))}
 
