@@ -4,8 +4,7 @@ import FormData from 'form-data';
 
 const router = express.Router();
 
-// Feature toggle flag (can also be from env variable)
-let IMAGE_GEN_ENABLED = false;
+let IMAGE_GEN_ENABLED = process.env.IMAGE_GEN_ENABLED === 'true';
 
 // Middleware to check toggle
 function checkImageGenEnabled(req, res, next) {

@@ -10,9 +10,8 @@ const Tab = ({ tab, isFilterTab, isActiveTab, handleClick }) => {
       : { backgroundColor: "transparent", opacity: 1 };
   return (
     <div
-      key={tab.name}
       className={`tab-btn ${
-        isFilterTab ? "rounnded-full glassmorphism" : "rounded-4"
+        isFilterTab ? "rounded-full glassmorphism" : "rounded-4"
       }`}
       onClick={handleClick}
       style={activeStyles}

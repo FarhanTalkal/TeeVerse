@@ -4,8 +4,7 @@ import { useSnapshot } from 'valtio';
 
 import config from '../config/config';
 import state from '../store';
-import { download } from '../assets';
-import { downloadCanvasToImage, reader } from '../config/helpers';
+import { reader } from '../config/helpers';
 import { EditorTabs, FilterTabs, DecalTypes } from '../config/constants';
 import { fadeAnimation, slideAnimation } from '../config/motion';
 import { AIPicker, ColorPicker, CustomButton, FilePicker, Tab } from '../components';
@@ -19,131 +18,96 @@ const Customizer = () => {
   const [generatingImg, setGeneratingImg] = useState(false);
 
   const [activeEditorTab, setActiveEditorTab] = useState("");
-  const [activeFilterTab, setActiveFilterTab] = useState({
-    logoShirt: true,
-    stylishShirt: false,
-  })
 
   const editorRef = useRef(null);
 
   useEffect(() => {
-  const handleClickOutside = (event) => {
-    if (
-      editorRef.current &&
-      !editorRef.current.contains(event.target)
-    ) {
+    const handleClickOutside = (event) => {
+      if (editorRef.current && !editorRef.current.contains(event.target)) {
+        setActiveEditorTab("");
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleDecals = (type, result) => {
+    const { stateProperty, filterProperty } = DecalTypes[type];
+
+    state[stateProperty] = result;
+    state[filterProperty] = true;
+  };
+
+  const toggleFilterTab = ({ stateProperty }) => {
+    state[stateProperty] = !state[stateProperty];
+  };
+
+  const handleSubmit = async (type) => {
+    if (!prompt) return alert("Please enter a prompt");
+
+    try {
+      setGeneratingImg(true);
+
+      const response = await fetch(config.backendUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+
+      if (response.status === 403) {
+        alert("Image generation is currently disabled by the admin.");
+        return;
+      }
+
+      const data = await response.json();
+
+      if (!response.ok || !data.photo) {
+        alert("Failed to generate image. Check your prompt or try again.");
+        return;
+      }
+
+      handleDecals(type, `data:image/png;base64,${data.photo}`);
+    } catch (error) {
+      console.error("Error submitting prompt:", error);
+      alert("Something went wrong while generating the image.");
+    } finally {
+      setGeneratingImg(false);
       setActiveEditorTab("");
     }
   };
 
-  document.addEventListener("mousedown", handleClickOutside);
-  return () => {
-    document.removeEventListener("mousedown", handleClickOutside);
-  };
-}, []);
+  const readFile = async (type) => {
+    if (!file) return alert("Please select a file first");
 
+    try {
+      handleDecals(type, await reader(file));
+      setActiveEditorTab("");
+    } catch (error) {
+      console.error("Error reading file:", error);
+      alert("Could not read that file.");
+    }
+  };
 
   const generateTabContent = () => {
     switch (activeEditorTab) {
       case "colorpicker":
-        return <ColorPicker />
+        return <ColorPicker />;
       case "filepicker":
-        return <FilePicker
-          file={file}
-          setFile={setFile}
-          readFile={readFile}
-        />
+        return <FilePicker file={file} setFile={setFile} readFile={readFile} />;
       case "aipicker":
-        return <AIPicker 
-          prompt={prompt}
-          setPrompt={setPrompt}
-          generatingImg={generatingImg}
-          handleSubmit={handleSubmit}
-        />
+        return (
+          <AIPicker
+            prompt={prompt}
+            setPrompt={setPrompt}
+            generatingImg={generatingImg}
+            handleSubmit={handleSubmit}
+          />
+        );
       default:
         return null;
     }
-  }
-
-const handleSubmit = async (type) => {
-  if (!prompt) return alert("Please enter a prompt");
-
-  try {
-    setGeneratingImg(true);
-
-    const response = await fetch('https://teeverse.onrender.com/api/v1/dalle', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ prompt }),
-    });
-
-    if (response.status === 403) {
-      alert("Image generation is currently disabled by the admin.");
-      setGeneratingImg(false);
-      return;
-    }
-
-    const data = await response.json();
-
-    if (!data.photo) {
-      alert("Failed to generate image. Check your prompt or try again.");
-      return;
-    }
-
-    handleDecals(type, `data:image/png;base64,${data.photo}`);
-  } catch (error) {
-    console.error("Error submitting prompt:", error);
-    alert("Something went wrong while generating the image.");
-  } finally {
-    setGeneratingImg(false);
-    setActiveEditorTab("");
-  }
-};
-
-
-  const handleDecals = (type, result) => {
-    const decalType = DecalTypes[type];
-
-    state[decalType.stateProperty] = result;
-
-    if(!activeFilterTab[decalType.filterTab]) {
-      handleActiveFilterTab(decalType.filterTab)
-    }
-  }
-
-  const handleActiveFilterTab = (tabName) => {
-    switch (tabName) {
-      case "logoShirt":
-          state.isLogoTexture = !activeFilterTab[tabName];
-        break;
-      case "stylishShirt":
-          state.isFullTexture = !activeFilterTab[tabName];
-        break;
-      default:
-        state.isLogoTexture = true;
-        state.isFullTexture = false;
-        break;
-    }
-
-
-
-    setActiveFilterTab((prevState) => {
-      return {
-        ...prevState,
-        [tabName]: !prevState[tabName]
-      }
-    })
-  }
-
-  const readFile = (type) => {
-    reader(file)
-      .then((result) => {
-        handleDecals(type, result);
-        setActiveEditorTab("");
-      })
-  }
+  };
 
   return (
     <AnimatePresence>
@@ -157,7 +121,7 @@ const handleSubmit = async (type) => {
             <div className="flex items-center min-h-screen">
               <div ref={editorRef} className="editortabs-container tabs">
                 {EditorTabs.map((tab) => (
-                  <Tab 
+                  <Tab
                     key={tab.name}
                     tab={tab}
                     handleClick={() => setActiveEditorTab((prevTab) => prevTab === tab.name ? "" : tab.name)}
@@ -173,7 +137,7 @@ const handleSubmit = async (type) => {
             className="absolute z-10 top-5 right-5"
             {...fadeAnimation}
           >
-            <CustomButton 
+            <CustomButton
               type="filled"
               title="Go Back"
               handleClick={() => state.intro = true}
@@ -190,15 +154,15 @@ const handleSubmit = async (type) => {
                 key={tab.name}
                 tab={tab}
                 isFilterTab
-                isActiveTab={activeFilterTab[tab.name]}
-                handleClick={() => handleActiveFilterTab(tab.name)}
+                isActiveTab={snap[tab.stateProperty]}
+                handleClick={() => toggleFilterTab(tab)}
               />
             ))}
           </motion.div>
         </>
       )}
     </AnimatePresence>
-  )
-}
+  );
+};
 
-export default Customizer
+export default Customizer;

@@ -19,20 +19,22 @@ export const FilterTabs = [
   {
     name: "logoShirt",
     icon: logoShirt,
+    stateProperty: "isLogoTexture",
   },
   {
     name: "stylishShirt",
     icon: stylishShirt,
+    stateProperty: "isFullTexture",
   },
 ];
 
 export const DecalTypes = {
   logo: {
     stateProperty: "logoDecal",
-    filterTab: "logoShirt",
+    filterProperty: "isLogoTexture",
   },
   full: {
     stateProperty: "fullDecal",
-    filterTab: "stylishShirt",
+    filterProperty: "isFullTexture",
   },
 };
